@@ -1,0 +1,27 @@
+name: Build Robot Code
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# cancel earlier run on new push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    # This grabs the WPILib docker container
+    container: wpilib/roborio-cross-ubuntu:2025-24.04
+    steps:
+    - uses: actions/checkout@v6
+    # Declares the repository safe and not under dubious ownership.
+    - name: Add repository to git safe directories
+      run: git config --global --add safe.directory $GITHUB_WORKSPACE
+    - name: Compile and run tests on robot code
+      run: |
+          chmod +x ./gradlew
+          ./gradlew build

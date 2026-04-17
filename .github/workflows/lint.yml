@@ -1,0 +1,28 @@
+name: Check Code Formatting
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# cancel earlier run on new push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+  
+jobs:
+  spotless:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: 17
+          cache: 'gradle'
+      - run: |
+          chmod +x ./gradlew
+          ./gradlew spotlessCheck
