@@ -105,7 +105,7 @@ public class Robot extends TimedRobot {
     driverController
         .start()
         .debounce(kDebounceTime)
-        .onTrue(Commands.runOnce(() -> robotDrive.setPose(defaultPose)).withName("Reset Pose"));
+        .onTrue(Commands.runOnce(() -> resetPose(defaultPose)).withName("Reset Pose"));
   }
 
   /** Use this method to define default commands for subsystems. */
@@ -176,6 +176,10 @@ public class Robot extends TimedRobot {
         alliance.equals(Alliance.Blue) ? 0.0 + offset : kTagLayout.getFieldLength() - offset,
         kTagLayout.getFieldWidth() / 2.0,
         alliance.equals(Alliance.Blue) ? Rotation2d.kZero : Rotation2d.k180deg);
+  }
+
+  public void resetPose(Pose2d pose) {
+    robotDrive.setPose(pose);
   }
 
   /**
@@ -251,4 +255,7 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {}
+
+  @Override
+  public void simulationPeriodic() {}
 }
