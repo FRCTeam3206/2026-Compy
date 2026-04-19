@@ -95,11 +95,13 @@ public class Robot extends TimedRobot {
     driverController.x().whileTrue(robotDrive.setXCommand());
     driverController
         .back()
+        .debounce(OIConstants.kDebounceTime)
         .onTrue(
             new InstantCommand(() -> fieldRelative = !fieldRelative)
                 .withName("Toggle fieldRelative"));
     driverController
         .start()
+        .debounce(OIConstants.kDebounceTime)
         .onTrue(robotDrive.runOnce(() -> robotDrive.setPose(defaultPose)).withName("Reset Pose"));
   }
 
