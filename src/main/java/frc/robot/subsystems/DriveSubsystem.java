@@ -10,7 +10,9 @@ import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.hal.SimDouble;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
@@ -26,29 +28,24 @@ import java.util.function.DoubleSupplier;
 @Logged
 public class DriveSubsystem extends SubsystemBase {
   // Create MAXSwerveModules
-  private final MAXSwerveModule frontLeft =
-      new MAXSwerveModule(
-          DriveConstants.kFrontLeftDrivingCanId,
-          DriveConstants.kFrontLeftTurningCanId,
-          DriveConstants.kFrontLeftChassisAngularOffset);
-
-  private final MAXSwerveModule frontRight =
-      new MAXSwerveModule(
-          DriveConstants.kFrontRightDrivingCanId,
-          DriveConstants.kFrontRightTurningCanId,
-          DriveConstants.kFrontRightChassisAngularOffset);
-
-  private final MAXSwerveModule rearLeft =
-      new MAXSwerveModule(
-          DriveConstants.kRearLeftDrivingCanId,
-          DriveConstants.kRearLeftTurningCanId,
-          DriveConstants.kBackLeftChassisAngularOffset);
-
-  private final MAXSwerveModule rearRight =
-      new MAXSwerveModule(
-          DriveConstants.kRearRightDrivingCanId,
-          DriveConstants.kRearRightTurningCanId,
-          DriveConstants.kBackRightChassisAngularOffset);
+  private final MAXSwerveModule[] swerveModules = {
+    new MAXSwerveModule(
+        DriveConstants.kFrontLeftDrivingCanId,
+        DriveConstants.kFrontLeftTurningCanId,
+        DriveConstants.kFrontLeftChassisAngularOffset),
+    new MAXSwerveModule(
+        DriveConstants.kFrontRightDrivingCanId,
+        DriveConstants.kFrontRightTurningCanId,
+        DriveConstants.kFrontRightChassisAngularOffset),
+    new MAXSwerveModule(
+        DriveConstants.kRearLeftDrivingCanId,
+        DriveConstants.kRearLeftTurningCanId,
+        DriveConstants.kBackLeftChassisAngularOffset),
+    new MAXSwerveModule(
+        DriveConstants.kRearRightDrivingCanId,
+        DriveConstants.kRearRightTurningCanId,
+        DriveConstants.kBackRightChassisAngularOffset)
+  };
 
   // The gyro sensor
   private final AHRS navx = new AHRS(AHRS.NavXComType.kMXP_SPI);
@@ -58,21 +55,15 @@ public class DriveSubsystem extends SubsystemBase {
 
   // Odometry class for tracking robot pose
   SwerveDriveOdometry odometry =
-      new SwerveDriveOdometry(
-          DriveConstants.kDriveKinematics,
-          navx.getRotation2d(),
-          new SwerveModulePosition[] {
-            frontLeft.getPosition(),
-            frontRight.getPosition(),
-            rearLeft.getPosition(),
-            rearRight.getPosition()
-          });
+      new SwerveDriveOdometry(DriveConstants.kDriveKinematics, Rotation2d.kZero, getPositions());
 
   private SwerveModuleState[] statesRequested =
       DriveConstants.kDriveKinematics.toSwerveModuleStates(new ChassisSpeeds());
   private SwerveModuleState[] statesMeasured = statesRequested;
   private ChassisSpeeds speedsRequested =
       DriveConstants.kDriveKinematics.toChassisSpeeds(statesRequested);
+
+  @SuppressWarnings("unused")
   private ChassisSpeeds speedsMeasured = speedsRequested;
 
   /** Creates a new DriveSubsystem. */
@@ -81,36 +72,38 @@ public class DriveSubsystem extends SubsystemBase {
     HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_MaxSwerve);
   }
 
+  private SwerveModulePosition[] getPositions() {
+    var positions = new SwerveModulePosition[swerveModules.length];
+    for (int i = 0; i < swerveModules.length; i++) {
+      positions[i] = swerveModules[i].getPosition();
+    }
+    return positions;
+  }
+
+  // for logging
+  private SwerveModuleState[] getStates() {
+    var states = new SwerveModuleState[swerveModules.length];
+    for (int i = 0; i < swerveModules.length; i++) {
+      states[i] = swerveModules[i].getState();
+    }
+    return states;
+  }
+
   @Override
   public void periodic() {
     // Update the odometry in the periodic block
-    odometry.update(
-        navx.getRotation2d(),
-        new SwerveModulePosition[] {
-          frontLeft.getPosition(),
-          frontRight.getPosition(),
-          rearLeft.getPosition(),
-          rearRight.getPosition()
-        });
+    odometry.update(navx.getRotation2d(), getPositions());
 
-    statesMeasured =
-        new SwerveModuleState[] {
-          frontLeft.getState(),
-          frontRight.getState(),
-          rearLeft.getState(),
-          rearRight.getState()
-        };
+    statesMeasured = getStates();
     speedsMeasured = DriveConstants.kDriveKinematics.toChassisSpeeds(statesMeasured);
   }
 
   @Override
   public void simulationPeriodic() {
     double timestep = 20e-3;
-    frontLeft.simulationPeriodic(timestep);
-    frontRight.simulationPeriodic(timestep);
-    rearLeft.simulationPeriodic(timestep);
-    rearRight.simulationPeriodic(timestep);
-
+    for (int i = 0; i < swerveModules.length; i++) {
+      swerveModules[i].simulationPeriodic(timestep);
+    }
     double dTheta = (speedsRequested.omegaRadiansPerSecond * timestep) * 180 / Math.PI;
     navxSimAngle.set(navxSimAngle.get() - dTheta);
   }
@@ -120,6 +113,7 @@ public class DriveSubsystem extends SubsystemBase {
    *
    * @return The pose.
    */
+  @Logged(name = "Pose")
   public Pose2d getPose() {
     return odometry.getPoseMeters();
   }
@@ -130,15 +124,7 @@ public class DriveSubsystem extends SubsystemBase {
    * @param pose The pose to which to set the odometry.
    */
   public void resetOdometry(Pose2d pose) {
-    odometry.resetPosition(
-        navx.getRotation2d(),
-        new SwerveModulePosition[] {
-          frontLeft.getPosition(),
-          frontRight.getPosition(),
-          rearLeft.getPosition(),
-          rearRight.getPosition()
-        },
-        pose);
+    odometry.resetPosition(navx.getRotation2d(), getPositions(), pose);
   }
 
   /**
@@ -159,7 +145,7 @@ public class DriveSubsystem extends SubsystemBase {
         DriveConstants.kDriveKinematics.toSwerveModuleStates(
             fieldRelative
                 ? ChassisSpeeds.fromFieldRelativeSpeeds(
-                    xSpeedDelivered, ySpeedDelivered, rotDelivered, navx.getRotation2d())
+                    xSpeedDelivered, ySpeedDelivered, rotDelivered, getPose().getRotation())
                 : new ChassisSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered));
     setModuleStates(swerveModuleStates);
   }
@@ -177,10 +163,9 @@ public class DriveSubsystem extends SubsystemBase {
   public void setModuleStates(SwerveModuleState[] desiredStates) {
     SwerveDriveKinematics.desaturateWheelSpeeds(
         desiredStates, DriveConstants.kMaxSpeedMetersPerSecond);
-    frontLeft.setDesiredState(desiredStates[0]);
-    frontRight.setDesiredState(desiredStates[1]);
-    rearLeft.setDesiredState(desiredStates[2]);
-    rearRight.setDesiredState(desiredStates[3]);
+    for (int i = 0; i < swerveModules.length; i++) {
+      swerveModules[i].setDesiredState(desiredStates[i]);
+    }
 
     statesRequested = desiredStates;
     speedsRequested = DriveConstants.kDriveKinematics.toChassisSpeeds(desiredStates);
@@ -188,15 +173,14 @@ public class DriveSubsystem extends SubsystemBase {
 
   /** Resets the drive encoders to currently read a position of 0. */
   public void resetEncoders() {
-    frontLeft.resetEncoders();
-    rearLeft.resetEncoders();
-    frontRight.resetEncoders();
-    rearRight.resetEncoders();
+    for (int i = 0; i < swerveModules.length; i++) {
+      swerveModules[i].resetEncoders();
+    }
   }
 
   /** Zeroes the heading of the robot. */
   public void zeroHeading() {
-    navx.reset();
+    navx.zeroYaw();
   }
 
   /**
@@ -204,8 +188,8 @@ public class DriveSubsystem extends SubsystemBase {
    *
    * @param pose The pose that the robot will have after reset.
    */
-  public void zeroHeading(Pose2d pose) {
-    navx.reset();
+  public void setPose(Pose2d pose) {
+    zeroHeading();
     resetOdometry(pose);
   }
 
@@ -214,8 +198,9 @@ public class DriveSubsystem extends SubsystemBase {
    *
    * @return the robot's heading in degrees, from -180 to 180
    */
+  @Logged(name = "Heading (degrees)")
   public double getHeading() {
-    return navx.getRotation2d().getDegrees();
+    return MathUtil.inputModulus(getAngle(), -180, 180);
   }
 
   /**
@@ -223,8 +208,19 @@ public class DriveSubsystem extends SubsystemBase {
    *
    * @return The turn rate of the robot, in degrees per second
    */
+  @Logged(name = "TurnRate (degrees per second)")
   public double getTurnRate() {
     return navx.getRate() * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+  }
+
+  /**
+   * Returns the unwrapped angle of the robot.
+   *
+   * @return The unwrapped angle of the robot, in degrees
+   */
+  @Logged(name = "Angle (degrees)")
+  public double getAngle() {
+    return navx.getAngle() * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
   }
 
   /**
@@ -251,6 +247,6 @@ public class DriveSubsystem extends SubsystemBase {
 
   /** Command to set the wheels into an X formation to prevent movement. */
   public Command setXCommand() {
-    return run(this::setX);
+    return run(this::setX).withName("Lock Wheels");
   }
 }

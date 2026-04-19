@@ -8,7 +8,6 @@ import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.epilogue.Epilogue;
 import edu.wpi.first.epilogue.Logged;
-import edu.wpi.first.epilogue.NotLogged;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -22,6 +21,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
+import frc.robot.Constants.ChassisConstants;
 import frc.robot.Constants.OIConstants;
 import frc.robot.subsystems.DriveSubsystem;
 import java.util.function.BooleanSupplier;
@@ -37,16 +37,19 @@ import java.util.function.DoubleSupplier;
 public class Robot extends TimedRobot {
   private Command autonomousCommand;
 
+  @Logged(name = "Running Commands")
+  private CommandScheduler cs = CommandScheduler.getInstance();
+
   // The robot's subsystems
   private final DriveSubsystem robotDrive = new DriveSubsystem();
 
   // fields that adjust the response for manual driving
   private boolean fieldRelative = true;
   private boolean invertControls = true;
-  private double speedMultiplier = 0.5; // factor applied to joystick drive commands
+  private double speedMultiplier = 1.0; // factor applied to joystick drive commands
 
-  // track alliance reported by driverstaion
-  @NotLogged private Alliance prevAlliance = null;
+  private AprilTagFieldLayout field = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
+  private Pose2d defaultPose = new Pose2d();
 
   // Driver controller
   private CommandXboxController driverController =
@@ -65,9 +68,9 @@ public class Robot extends TimedRobot {
     Epilogue.bind(this);
 
     var backend = Epilogue.getConfig().backend;
-    backend.log("Robot/buildInfo/currentBranch", BuildConstants.GIT_BRANCH);
-    backend.log("Robot/buildInfo/buildDate", BuildConstants.BUILD_DATE);
-    backend.log("Robot/buildInfo/commitId", BuildConstants.GIT_SHA);
+    backend.log("BuildInfo/currentBranch", BuildConstants.GIT_BRANCH);
+    backend.log("BuildInfo/buildDate", BuildConstants.BUILD_DATE);
+    backend.log("BuildInfo/commitId", BuildConstants.GIT_SHA);
   }
 
   /**
@@ -90,27 +93,32 @@ public class Robot extends TimedRobot {
    */
   private void configureButtonBindings() {
     driverController.x().whileTrue(robotDrive.setXCommand());
-    driverController.back().onTrue(new InstantCommand(() -> fieldRelative = !fieldRelative));
     driverController
-        .a()
-        .onTrue(robotDrive.runOnce(() -> robotDrive.zeroHeading(robotDrive.getPose())));
-    driverController.start().onTrue(new InstantCommand(() -> resetRobotToFieldCenter()));
+        .back()
+        .onTrue(
+            new InstantCommand(() -> fieldRelative = !fieldRelative)
+                .withName("Toggle fieldRelative"));
+    driverController
+        .start()
+        .onTrue(robotDrive.runOnce(() -> robotDrive.setPose(defaultPose)).withName("Reset Pose"));
   }
 
   /** Use this method to define default commands for subsystems. */
   private void configureDefaultCommands() {
     robotDrive.setDefaultCommand(
-        robotDrive.driveCommand(
-            adjustJoystick(
-                driverController::getLeftY,
-                () -> speedMultiplier,
-                () -> invertControls || !fieldRelative),
-            adjustJoystick(
-                driverController::getLeftX,
-                () -> speedMultiplier,
-                () -> invertControls || !fieldRelative),
-            adjustJoystick(driverController::getRightX, () -> speedMultiplier, () -> true),
-            () -> fieldRelative));
+        robotDrive
+            .driveCommand(
+                adjustJoystick(
+                    driverController::getLeftY,
+                    () -> speedMultiplier,
+                    () -> invertControls || !fieldRelative),
+                adjustJoystick(
+                    driverController::getLeftX,
+                    () -> speedMultiplier,
+                    () -> invertControls || !fieldRelative),
+                adjustJoystick(driverController::getRightX, () -> speedMultiplier, () -> true),
+                () -> fieldRelative)
+            .withName("Driver Controlled"));
   }
 
   /**
@@ -142,19 +150,27 @@ public class Robot extends TimedRobot {
     };
   }
 
-  public void resetRobotToFieldCenter() {
-    var field = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
-    var heading =
-        (DriverStation.getAlliance().isPresent()
-                && DriverStation.getAlliance().get() == Alliance.Red)
-            ? 180.0
-            : 0.0;
-    robotDrive.zeroHeading();
-    robotDrive.resetOdometry(
-        new Pose2d(
-            field.getFieldLength() / 2,
-            field.getFieldWidth() / 2,
-            Rotation2d.fromDegrees(heading)));
+  private void updateAlliance() {
+    if (!DriverStation.getAlliance().isEmpty()) {
+      var alliance = DriverStation.getAlliance().get();
+      invertControls = alliance.equals(Alliance.Blue);
+      defaultPose = poseAllianceWall(alliance);
+    }
+  }
+
+  public Pose2d poseFieldCenter(Alliance alliance) {
+    return new Pose2d(
+        field.getFieldLength() / 2.0,
+        field.getFieldWidth() / 2.0,
+        alliance.equals(Alliance.Blue) ? Rotation2d.kZero : Rotation2d.k180deg);
+  }
+
+  public Pose2d poseAllianceWall(Alliance alliance) {
+    var offset = ChassisConstants.kLength / 2.0 + ChassisConstants.kBumperThickness;
+    return new Pose2d(
+        alliance.equals(Alliance.Blue) ? 0.0 + offset : field.getFieldLength() - offset,
+        field.getFieldWidth() / 2.0,
+        alliance.equals(Alliance.Blue) ? Rotation2d.kZero : Rotation2d.k180deg);
   }
 
   /**
@@ -170,7 +186,7 @@ public class Robot extends TimedRobot {
     // commands, running already-scheduled commands, removing finished or interrupted commands,
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
-    CommandScheduler.getInstance().run();
+    cs.run();
   }
 
   /** This function is called once each time the robot enters Disabled mode. */
@@ -178,7 +194,10 @@ public class Robot extends TimedRobot {
   public void disabledInit() {}
 
   @Override
-  public void disabledPeriodic() {}
+  public void disabledPeriodic() {
+    // check driverstation for Alliance
+    updateAlliance();
+  }
 
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
@@ -211,14 +230,7 @@ public class Robot extends TimedRobot {
     if (autonomousCommand != null) {
       autonomousCommand.cancel();
     }
-    if (!DriverStation.getAlliance().isEmpty()) {
-      var alliance = DriverStation.getAlliance().get();
-      invertControls = isSimulation() || alliance.equals(Alliance.Blue);
-      if (prevAlliance == null || !prevAlliance.equals(alliance)) {
-        resetRobotToFieldCenter();
-        prevAlliance = alliance;
-      }
-    }
+    updateAlliance();
   }
 
   /** This function is called periodically during operator control. */

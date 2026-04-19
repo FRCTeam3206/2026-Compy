@@ -20,6 +20,12 @@ import edu.wpi.first.math.util.Units;
  * constants are needed, to reduce verbosity.
  */
 public final class Constants {
+  public static final class ChassisConstants {
+    public static final double kLength = Units.inchesToMeters(27);
+    public static final double kWidth = Units.inchesToMeters(27);
+    public static final double kBumperThickness = Units.inchesToMeters(3.5);
+  }
+
   public static final class DriveConstants {
     // Driving Parameters - Note that these are not the maximum capable speeds of
     // the robot, rather the allowed maximum speeds
@@ -63,7 +69,7 @@ public final class Constants {
     public static final int kFrontRightTurningCanId = 4;
     public static final int kRearRightTurningCanId = 3;
 
-    public static final boolean kGyroReversed = false;
+    public static final boolean kGyroReversed = true;
   }
 
   public static final class ModuleConstants {
