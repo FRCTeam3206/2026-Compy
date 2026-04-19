@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
@@ -67,10 +68,14 @@ public class Robot extends TimedRobot {
 
     Epilogue.bind(this);
 
+    // Log all the static values in BuildConstants
     var backend = Epilogue.getConfig().backend;
-    backend.log("BuildInfo/currentBranch", BuildConstants.GIT_BRANCH);
-    backend.log("BuildInfo/buildDate", BuildConstants.BUILD_DATE);
-    backend.log("BuildInfo/commitId", BuildConstants.GIT_SHA);
+    for (var field : BuildConstants.class.getFields()) {
+      try {
+        backend.log("BuildInfo/" + field.getName(), field.get(null).toString());
+      } catch (Exception e) {
+      }
+    }
   }
 
   /**
@@ -97,12 +102,12 @@ public class Robot extends TimedRobot {
         .back()
         .debounce(OIConstants.kDebounceTime)
         .onTrue(
-            new InstantCommand(() -> fieldRelative = !fieldRelative)
+            Commands.runOnce(() -> fieldRelative = !fieldRelative)
                 .withName("Toggle fieldRelative"));
     driverController
         .start()
         .debounce(OIConstants.kDebounceTime)
-        .onTrue(robotDrive.runOnce(() -> robotDrive.setPose(defaultPose)).withName("Reset Pose"));
+        .onTrue(Commands.runOnce(() -> robotDrive.setPose(defaultPose)).withName("Reset Pose"));
   }
 
   /** Use this method to define default commands for subsystems. */
