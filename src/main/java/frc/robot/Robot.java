@@ -12,6 +12,7 @@ import edu.wpi.first.epilogue.Epilogue;
 import edu.wpi.first.epilogue.Logged;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -44,6 +45,10 @@ public class Robot extends TimedRobot {
   // The robot's subsystems
   private final DriveSubsystem robotDrive = new DriveSubsystem();
 
+  // Vision system
+  private Vision vision =
+      new Vision(kCamera1Name, kCamera1Transform, robotDrive::addVisionMeasurement);
+
   // fields that adjust the response for manual driving
   private boolean fieldRelative = true;
   private boolean invertControls = true;
@@ -53,6 +58,9 @@ public class Robot extends TimedRobot {
 
   // Driver controller
   private CommandXboxController driverController = new CommandXboxController(kDriverControllerPort);
+
+  @Logged(name = "vision/Camera1Pose")
+  private Pose3d cameraPose;
 
   public Robot() {
     if (isSimulation()) {
@@ -180,6 +188,7 @@ public class Robot extends TimedRobot {
 
   public void resetPose(Pose2d pose) {
     robotDrive.setPose(pose);
+    vision.resetSimPose(pose);
   }
 
   /**
@@ -195,6 +204,8 @@ public class Robot extends TimedRobot {
     // commands, running already-scheduled commands, removing finished or interrupted commands,
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
+    vision.periodic();
+    cameraPose = new Pose3d(robotDrive.getPose()).plus(kCamera1Transform);
     cs.run();
   }
 
@@ -257,5 +268,9 @@ public class Robot extends TimedRobot {
   public void testPeriodic() {}
 
   @Override
-  public void simulationPeriodic() {}
+  public void simulationPeriodic() {
+    vision.simulationPeriodic(robotDrive.getPose());
+    var debugField = vision.getSimDebugField();
+    debugField.getObject("EstimatedRobot").setPose(robotDrive.getPose());
+  }
 }
