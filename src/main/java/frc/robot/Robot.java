@@ -4,8 +4,10 @@
 
 package frc.robot;
 
-import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
+import static frc.robot.Constants.ChassisConstants.*;
+import static frc.robot.Constants.OIConstants.*;
+import static frc.robot.Constants.VisionConstants.*;
+
 import edu.wpi.first.epilogue.Epilogue;
 import edu.wpi.first.epilogue.Logged;
 import edu.wpi.first.math.MathUtil;
@@ -22,8 +24,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
-import frc.robot.Constants.ChassisConstants;
-import frc.robot.Constants.OIConstants;
 import frc.robot.subsystems.DriveSubsystem;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
@@ -49,12 +49,10 @@ public class Robot extends TimedRobot {
   private boolean invertControls = true;
   private double speedMultiplier = 1.0; // factor applied to joystick drive commands
 
-  private AprilTagFieldLayout field = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
   private Pose2d defaultPose = new Pose2d();
 
   // Driver controller
-  private CommandXboxController driverController =
-      new CommandXboxController(OIConstants.kDriverControllerPort);
+  private CommandXboxController driverController = new CommandXboxController(kDriverControllerPort);
 
   public Robot() {
     if (isSimulation()) {
@@ -100,13 +98,13 @@ public class Robot extends TimedRobot {
     driverController.x().whileTrue(robotDrive.setXCommand());
     driverController
         .back()
-        .debounce(OIConstants.kDebounceTime)
+        .debounce(kDebounceTime)
         .onTrue(
             Commands.runOnce(() -> fieldRelative = !fieldRelative)
                 .withName("Toggle fieldRelative"));
     driverController
         .start()
-        .debounce(OIConstants.kDebounceTime)
+        .debounce(kDebounceTime)
         .onTrue(Commands.runOnce(() -> robotDrive.setPose(defaultPose)).withName("Reset Pose"));
   }
 
@@ -151,7 +149,7 @@ public class Robot extends TimedRobot {
       if (negate.getAsBoolean()) {
         value = -value;
       }
-      value = MathUtil.applyDeadband(value, OIConstants.kDriveDeadband);
+      value = MathUtil.applyDeadband(value, kDriveDeadband);
       value = multiplier.getAsDouble() * value;
       return value;
     };
@@ -167,16 +165,16 @@ public class Robot extends TimedRobot {
 
   public Pose2d poseFieldCenter(Alliance alliance) {
     return new Pose2d(
-        field.getFieldLength() / 2.0,
-        field.getFieldWidth() / 2.0,
+        kTagLayout.getFieldLength() / 2.0,
+        kTagLayout.getFieldWidth() / 2.0,
         alliance.equals(Alliance.Blue) ? Rotation2d.kZero : Rotation2d.k180deg);
   }
 
   public Pose2d poseAllianceWall(Alliance alliance) {
-    var offset = ChassisConstants.kLength / 2.0 + ChassisConstants.kBumperThickness;
+    var offset = kChassisLength / 2.0 + kBumperThickness;
     return new Pose2d(
-        alliance.equals(Alliance.Blue) ? 0.0 + offset : field.getFieldLength() - offset,
-        field.getFieldWidth() / 2.0,
+        alliance.equals(Alliance.Blue) ? 0.0 + offset : kTagLayout.getFieldLength() - offset,
+        kTagLayout.getFieldWidth() / 2.0,
         alliance.equals(Alliance.Blue) ? Rotation2d.kZero : Rotation2d.k180deg);
   }
 

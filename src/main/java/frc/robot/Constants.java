@@ -4,8 +4,13 @@
 
 package frc.robot;
 
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
@@ -19,14 +24,14 @@ import edu.wpi.first.math.util.Units;
  * <p>It is advised to statically import this class (or one of its inner classes) wherever the
  * constants are needed, to reduce verbosity.
  */
-public final class Constants {
-  public static final class ChassisConstants {
-    public static final double kLength = Units.inchesToMeters(27);
-    public static final double kWidth = Units.inchesToMeters(27);
+public class Constants {
+  public static class ChassisConstants {
+    public static final double kChassisLength = Units.inchesToMeters(27);
+    public static final double kChassisWidth = Units.inchesToMeters(27);
     public static final double kBumperThickness = Units.inchesToMeters(3.5);
   }
 
-  public static final class DriveConstants {
+  public static class DriveConstants {
     // Driving Parameters - Note that these are not the maximum capable speeds of
     // the robot, rather the allowed maximum speeds
     public static final double kMaxSpeedMetersPerSecond = 4.8;
@@ -72,7 +77,7 @@ public final class Constants {
     public static final boolean kGyroReversed = true;
   }
 
-  public static final class ModuleConstants {
+  public static class ModuleConstants {
     // The MAXSwerve module can be configured with one of three pinion gears: 12T,
     // 13T, or 14T. This changes the drive speed of the module (a pinion gear with
     // more teeth will result in a robot that drives faster).
@@ -90,13 +95,13 @@ public final class Constants {
         (kDrivingMotorFreeSpeedRps * kWheelCircumferenceMeters) / kDrivingMotorReduction;
   }
 
-  public static final class OIConstants {
+  public static class OIConstants {
     public static final int kDriverControllerPort = 0;
     public static final double kDriveDeadband = 0.05;
     public static final double kDebounceTime = 0.1;
   }
 
-  public static final class AutoConstants {
+  public static class AutoConstants {
     public static final double kMaxSpeedMetersPerSecond = 3;
     public static final double kMaxAccelerationMetersPerSecondSquared = 3;
     public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI;
@@ -112,7 +117,16 @@ public final class Constants {
             kMaxAngularSpeedRadiansPerSecond, kMaxAngularSpeedRadiansPerSecondSquared);
   }
 
-  public static final class NeoMotorConstants {
+  public static class NeoMotorConstants {
     public static final double kFreeSpeedRpm = 5676;
+  }
+
+  public static class VisionConstants {
+    public static final String kCamera1Name = "Camera1";
+    public static final Transform3d kCamera1Transform =
+        new Transform3d(new Translation3d(), new Rotation3d());
+
+    public static final AprilTagFieldLayout kTagLayout =
+        AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
   }
 }
