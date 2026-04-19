@@ -11,11 +11,11 @@ import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.hal.SimDouble;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.simulation.SimDeviceSim;
@@ -54,8 +54,9 @@ public class DriveSubsystem extends SubsystemBase {
   private final SimDouble navxSimAngle = navxSim.getDouble("Yaw");
 
   // Odometry class for tracking robot pose
-  SwerveDriveOdometry odometry =
-      new SwerveDriveOdometry(DriveConstants.kDriveKinematics, Rotation2d.kZero, getPositions());
+  SwerveDrivePoseEstimator odometry =
+      new SwerveDrivePoseEstimator(
+          DriveConstants.kDriveKinematics, Rotation2d.kZero, getPositions(), Pose2d.kZero);
 
   private SwerveModuleState[] statesRequested =
       DriveConstants.kDriveKinematics.toSwerveModuleStates(new ChassisSpeeds());
@@ -115,7 +116,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   @Logged(name = "Pose")
   public Pose2d getPose() {
-    return odometry.getPoseMeters();
+    return odometry.getEstimatedPosition();
   }
 
   /**
@@ -123,7 +124,7 @@ public class DriveSubsystem extends SubsystemBase {
    *
    * @param pose The pose to which to set the odometry.
    */
-  public void resetOdometry(Pose2d pose) {
+  public void resetPosition(Pose2d pose) {
     odometry.resetPosition(navx.getRotation2d(), getPositions(), pose);
   }
 
@@ -190,7 +191,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void setPose(Pose2d pose) {
     zeroHeading();
-    resetOdometry(pose);
+    resetPosition(pose);
   }
 
   /**
