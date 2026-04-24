@@ -170,7 +170,7 @@ public class Robot extends TimedRobot {
         alliance.equals(Alliance.Blue) ? Rotation2d.kZero : Rotation2d.k180deg);
   }
 
- public Pose2d pose0(Alliance alliance) {
+  public Pose2d pose0(Alliance alliance) {
     return Pose2d.kZero;
   }
 
