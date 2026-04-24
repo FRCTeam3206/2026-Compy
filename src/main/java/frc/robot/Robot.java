@@ -47,7 +47,7 @@ public class Robot extends TimedRobot {
   // fields that adjust the response for manual driving
   private boolean fieldRelative = true;
   private boolean invertControls = true;
-  private double speedMultiplier = 1.0; // factor applied to joystick drive commands
+  private double speedMultiplier = 0.5; // factor applied to joystick drive commands
 
   private Pose2d defaultPose = new Pose2d();
 
@@ -159,7 +159,7 @@ public class Robot extends TimedRobot {
     if (!DriverStation.getAlliance().isEmpty()) {
       var alliance = DriverStation.getAlliance().get();
       invertControls = alliance.equals(Alliance.Blue);
-      defaultPose = poseAllianceWall(alliance);
+      defaultPose = pose0(alliance);
     }
   }
 
@@ -168,6 +168,10 @@ public class Robot extends TimedRobot {
         kTagLayout.getFieldLength() / 2.0,
         kTagLayout.getFieldWidth() / 2.0,
         alliance.equals(Alliance.Blue) ? Rotation2d.kZero : Rotation2d.k180deg);
+  }
+
+  public Pose2d pose0(Alliance alliance) {
+    return Pose2d.kZero;
   }
 
   public Pose2d poseAllianceWall(Alliance alliance) {
