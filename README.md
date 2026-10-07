@@ -14,3 +14,4 @@ MAXSwerve drivebase code for Team 3206. The code is based on the [REVrobotics MA
 * Use NavX 2 as the gyro.
 * Include basic simulation support for the drivetrain.
 * Include PhotonVision.
+Arun's edits
