@@ -130,9 +130,16 @@ public class Robot extends TimedRobot {
    * Use this to select the autonomous command.
    *
    * @return the command to run in autonomous
-   */
+   */ 
   private Command getAutonomousCommand() {
-    return new InstantCommand();
+    return robotDrive.run(()->robotDrive.drive(0.5, 0.5, 0, false))
+                      .withTimeout(3.0)
+                      .andThen(robotDrive.run(()->robotDrive.drive(0.2, -0.2, 0, false)))
+                      .withTimeout(4)
+                      .finallyDo(()->robotDrive.run(()->robotDrive.drive(0.5, 0.5, 0, true)));
+                      
+                      //(robotDrive.run(()->robotDrive.drive(0,0,.5,false)))
+                      //.withTimeout(1);
   }
 
   /**
